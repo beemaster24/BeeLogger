@@ -1,3 +1,9 @@
+/*
+MIT License
+
+Copyright (c) 2025 Vyacheslav V. Kunakov
+*/
+
 #include "Global.h"
 #include "web.h"
 #include "fram.h"
