@@ -1,8 +1,8 @@
 #include "Global.h"
 
 // Настройки по умолчанию
-const char* _default_ssid = "RT-GPON-6EE6";       // SSID Wi-Fi по умолчанию
-const char* default_password = "UAQYHKZV"; // Пароль Wi-Fi по умолчанию
+const char* _default_ssid = "SSID";       // SSID Wi-Fi по умолчанию
+const char* default_password = "12345678"; // Пароль Wi-Fi по умолчанию
 const char* default_ap_ssid = "BeeLogger";   // Имя точки доступа по умолчанию
 const char* default_ap_password = "12345678"; // Пароль точки доступа по умолчанию
 const char* default_timezone = "UTC+0";       // Часовой пояс по умолчанию
