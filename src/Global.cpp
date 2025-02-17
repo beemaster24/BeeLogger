@@ -27,6 +27,8 @@ String ap_password;
 WiFiClient wifiClient;
 ESP8266WebServer server(80);
 
+bool enOLED = false;
+
 // NTP-клиент
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", 0); // Смещение 0, будем корректировать часовым поясом

@@ -11,9 +11,10 @@
 #include <RTClib.h> // Для DS1307
 #include <NTPClient.h> // Для синхронизации времени
 #include <WiFiUdp.h> // Для NTP
-#include <Adafruit_SSD1306.h> // Для OLED-экрана
+#include <GyverOLED.h> //Меняем OLED на Gyver'a
 #include <ESP8266HTTPClient.h> // Для HTTP-запросов
 #include <ESP8266httpUpdate.h> // Для OTA-обновлений
+#include <EncButton.h> // Юзаем кнопку от Gyver
 
 // Настройки по умолчанию
 extern const char* _default_ssid;       // SSID Wi-Fi по умолчанию
@@ -65,6 +66,9 @@ extern RTC_DS1307 rtc;
 
 // Адрес EEPROM FM24CL64B
 #define EEPROM_I2C_ADDRESS 0x50
+
+//Переменная вкл/выкл экрана OLED
+extern bool enOLED;
 
 // Структура для хранения данных измерений
 struct Measurement {

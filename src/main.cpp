@@ -11,20 +11,23 @@ Copyright (c) 2025 Vyacheslav V. Kunakov
 
 #include <Blinker.h>
 
+unsigned long currentMillis;
+
+const int arraySize = 4; // Размер массива
+String stringArray[arraySize]; // Массив строк
+
 // OLED-экран
-#define SSD1306_I2C_ADDRESS 0x3C
-#define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 64
-#define OLED_RESET    -1
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+GyverOLED<SSD1306_128x32, OLED_NO_BUFFER> oled;
+unsigned int oledView = 10000;
+unsigned int oledPrevMillis = 0;
 
 // Кнопка
-const int BUTTON_PIN = D0; // GPIO16
+Button btn(D0); // GPIO16
 
 // Встроенный светодиод
-const int LED_PIN = LED_BUILTIN; // Встроенный светодиод
-unsigned long lastLedBlink = 0;
-bool ledState = LOW;
+//const int LED_PIN = LED_BUILTIN; // Встроенный светодиод
+//unsigned long lastLedBlink = 0;
+//bool ledState = LOW;
 Blinker led(2);
 
 unsigned long previousMillis = 0;
@@ -36,8 +39,8 @@ unsigned long lastButtonPress = 0;
 
 void startAP(const String& ap_ssid, const String& ap_password);
 int getTimezoneOffset();
-void displaySensorData();
-void blinkLED();
+void viewData();
+void oledLog(String newString);
 
 void setup() {
   Serial.begin(115200);
@@ -47,22 +50,13 @@ void setup() {
   Wire.begin();
 
   // Инициализация OLED-экрана
-  if (!display.begin(SSD1306_I2C_ADDRESS, OLED_RESET)) {
-    Serial.println("Не удалось найти OLED-экран!");
-  } else {
-    display.display();
-    display.clearDisplay();
-    display.setCursor(0, 0);
-    display.print("TEST");
-    display.display();
-  }
-
-  // Инициализация кнопки
-  pinMode(BUTTON_PIN, INPUT_PULLUP);
-
-  // Инициализация светодиода
-  //pinMode(LED_PIN, OUTPUT);
-  //digitalWrite(LED_PIN, HIGH); // Выключить светодиод (активный LOW)
+  enOLED = true;
+  oled.init();
+  oled.clear();
+  oled.setScale(1);
+  
+  oledLog("System starting...");
+  delay(100);
 
   // Инициализация файловой системы
   if (!LittleFS.begin()) {
@@ -75,13 +69,22 @@ void setup() {
   // Инициализация BMP280
   if (!bmp.begin(0x76)) { // Адрес BMP280 может быть 0x76 или 0x77
     Serial.println("Не удалось найти BMP280!");
+    oledLog("BMP280 not found!");
+    delay(100);
+  } else {
+    oledLog("BMP280 is OK...");
+    delay(100);
   }
 
   // Инициализация RTC DS1307
   if (!rtc.begin()) {
     Serial.println("Не удалось найти RTC DS1307!");
+    oledLog("RTC not found!");
+    delay(100);
   } else if (!rtc.isrunning()) {
     Serial.println("RTC не работает! Установите время.");
+    oledLog("RTC is OK...");
+    delay(100);
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); // Установка текущего времени
   }
 
@@ -89,12 +92,19 @@ void setup() {
   if (scale.is_ready()) {
     scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
     scale.set_scale(calibration_factor);
-    scale.tare(); // Сброс веса
+    //scale.tare(); // Сброс веса
+    //scale.power_down();
+    oledLog("Scale ready for work...");
+    delay(100);
+  } else {
+    oledLog("Load cell not found!");
+    delay(100);
   }
 
   // Попытка подключения к Wi-Fi сети
   WiFi.begin(wifi_ssid, wifi_password);
   Serial.println("Подключение к Wi-Fi...");
+  oledLog("Connecting to WiFi...");
 
   // Ожидание подключения
   unsigned long startTime = millis();
@@ -106,12 +116,17 @@ void setup() {
   // Если подключение не удалось, запускаем точку доступа
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("\nНе удалось подключиться к Wi-Fi. Запуск точки доступа...");
+    oledLog("No WiFi, start AP...");
     startAP(ap_ssid, ap_password);
-    led.blinkForever(2, 1000);
+    led.blinkForever(3000, 100);
+    delay(100);
   } else {
     Serial.println("\nПодключение к Wi-Fi успешно!");
+    oledLog("Connected to WiFi");
     Serial.println(WiFi.localIP());
-    led.blinkForever(1, 1000);
+    oledLog(WiFi.localIP().toString());
+    delay(100);
+    led.blinkForever(5000, 100);
 
     // Синхронизация времени с NTP
     timeClient.begin();
@@ -121,14 +136,37 @@ void setup() {
 
     // Проверка обновлений
     checkForUpdates();
+    delay(500);
   }
 
   // Инициализация веб-сервера
   initWebServer();
+
+  currentMillis = millis();
+  oledPrevMillis = currentMillis;
 }
 
 void loop() {
-  unsigned long currentMillis = millis();
+
+  currentMillis = millis();
+
+  btn.tick();
+
+  if (btn.hold(1) && enOLED == false) {
+    //Клик-удержание - показываем текущие данные датчиков на OLED в течении 10 секунд
+    viewData();
+  }
+
+  if (btn.hold(2)) {
+    // Клик клик-удержание - откл/вкл WiFi. Выставляем флаг WiFi ON/OFF
+  }
+
+  //Отключаем OLED песле 10 секунд отображения онформации
+  if (currentMillis - oledPrevMillis >= oledView && enOLED == true) {
+    oled.clear();
+    oled.setPower(false);
+    enOLED = false;
+  }
 
   // Периодическая проверка доступности Wi-Fi сети
   if (currentMillis - previousMillis >= interval) {
@@ -137,7 +175,7 @@ void loop() {
     if (WiFi.status() != WL_CONNECTED) {
       Serial.println("Wi-Fi сеть недоступна. Запуск точки доступа...");
       startAP(default_ap_ssid, default_ap_password);
-      led.blinkForever(2, 1000);
+      led.blinkForever(3000, 100);
     } else {
       Serial.println("Wi-Fi сеть доступна.");
     }
@@ -159,25 +197,42 @@ void loop() {
     Serial.println("Измерение сохранено: " + String(weight) + " кг, " + String(temperature) + " °C, " + String(pressure) + " гПа");
   }
 
-  // Обработка нажатия кнопки
-  if (digitalRead(BUTTON_PIN) == LOW) {
-    if (currentMillis - lastButtonPress > 10000) { // Защита от дребезга
-      lastButtonPress = currentMillis;
-      displaySensorData();
-    }
-  }
-
   // Выключение экрана через 10 секунд
-  if (currentMillis - lastButtonPress > 10000 && display.getRotation() != 0) {
-    display.clearDisplay();
-    display.display();
-  }
-
-  // Мигание светодиодом
-  //blinkLED();
+  //oled.setPower(false);
 
   // Обслуживание веб-сервера
   server.handleClient();
+
+  // Обрабатываем светодиод
+  led.tick();
+}
+
+void viewData() {
+  enOLED = true;
+  if (scale.is_ready()) {
+    yield();
+    weight = scale.get_units(10);
+  } else {
+    weight = 0;
+  }
+  float temp = bmp.readTemperature();
+  float pres = bmp.readPressure();
+
+  oled.clear();
+  oled.setPower(true);
+  oled.setScale(3);
+  oled.setCursor(0, 8);
+  oled.print(weight);
+  oled.print("кг.");
+  oled.setScale(2);
+  oled.setCursor(64, 0);
+  oled.print(temp);
+  oled.print("мм");
+  oled.setCursor(64, 16);
+  oled.print(pres);
+  oled.print("C");
+  currentMillis = millis();
+  oledPrevMillis = currentMillis;
 }
 
 void startAP(const String& ap_ssid, const String& ap_password) {
@@ -186,6 +241,7 @@ void startAP(const String& ap_ssid, const String& ap_password) {
   Serial.println("Точка доступа запущена");
   Serial.print("IP адрес: ");
   Serial.println(WiFi.softAPIP());
+  oledLog(WiFi.softAPIP().toString());
 }
 
 int getTimezoneOffset() {
@@ -197,30 +253,25 @@ int getTimezoneOffset() {
   return 0; // По умолчанию UTC
 }
 
-void displaySensorData() {
-  if (scale.is_ready()) {
-    float weight = scale.get_units(10);
+void oledLog(String newString) {
+  oled.clear();
+  oled.home();
+
+  // Сдвигаем массив влево если он полностью заполнен
+  if (sizeof(stringArray) > arraySize) {
+    for (int i = 1; i < arraySize; i++) {
+      stringArray[i - 1] = stringArray[i];
+    }
   }
-  float temperature = bmp.readTemperature();
-  float pressure = bmp.readPressure() / 100.0F;
 
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0, 0);
-  display.println("Вес: " + String(weight) + " кг");
-  display.println("Темп: " + String(temperature) + " °C");
-  display.println("Давл: " + String(pressure) + " гПа");
-  display.display();
-}
+  // Добавляем новую строку в конец массива
+  stringArray[arraySize - 1] = newString;
 
-void blinkLED() {
-  unsigned long currentMillis = millis();
-  int blinkInterval = (WiFi.getMode() == WIFI_AP) ? 500 : 1000; // 2 раза в секунду в AP, 1 раз в Wi-Fi
-
-  if (currentMillis - lastLedBlink >= blinkInterval) {
-    lastLedBlink = currentMillis;
-    ledState = !ledState;
-    digitalWrite(LED_PIN, ledState ? LOW : HIGH); // Инвертированное управление (активный LOW)
+  //Выводим инофрмацию о загрузке на экран
+  Serial.println("Current array:");
+  for (int i = 0; i < arraySize; i++) {
+    Serial.println(stringArray[i]);
+    oled.println(stringArray[i]);
   }
+  Serial.println("End array\n");
 }
