@@ -38,7 +38,7 @@ const char* firmwareUpdateUrl = "http://kunakov.net/42902D74/firmware.bin";
 const char* firmwareVersionUrl = "http://kunakov.net/42902D74/version.txt";
 
 // Текущая версия прошивки
-String currentFirmwareVersion = "3.1.6";
+String currentFirmwareVersion = "3.1.0";
 
 float weight;
 float load; // Вес устанавливаемый на весы для колибровки > 0

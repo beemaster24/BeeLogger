@@ -67,7 +67,7 @@ extern RTC_DS1307 rtc;
 // Адрес EEPROM FM24CL64B
 #define EEPROM_I2C_ADDRESS 0x50
 
-//Переменная вкл/выкл экрана OLED
+//Флаг вкл/выкл экрана OLED
 extern bool enOLED;
 
 // Структура для хранения данных измерений
