@@ -24,10 +24,6 @@ unsigned int oledPrevMillis = 0;
 // Кнопка
 Button btn(D0); // GPIO16
 
-// Встроенный светодиод
-//const int LED_PIN = LED_BUILTIN; // Встроенный светодиод
-//unsigned long lastLedBlink = 0;
-//bool ledState = LOW;
 Blinker led(2);
 
 unsigned long previousMillis = 0;
@@ -101,31 +97,36 @@ void setup() {
     delay(100);
   }
 
-  // Попытка подключения к Wi-Fi сети
-  WiFi.begin(wifi_ssid, wifi_password);
-  Serial.println("Подключение к Wi-Fi...");
-  oledLog("Connecting to WiFi...");
+  WiFiConnector.setName(ap_ssid);
+  WiFiConnector.setPass(ap_password);
+
+  WiFiConnector.connect(wifi_ssid, wifi_password);
+
+  oledLog("Connecting to WiFi");
 
   // Ожидание подключения
   unsigned long startTime = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - startTime < 10000) {
+  while (WiFiConnector.connected() != true && millis() - startTime < 10000) {
     delay(500);
     Serial.print(".");
   }
 
   // Если подключение не удалось, запускаем точку доступа
-  if (WiFi.status() != WL_CONNECTED) {
+  WiFiConnector.onError([]() {
     Serial.println("\nНе удалось подключиться к Wi-Fi. Запуск точки доступа...");
-    oledLog("No WiFi, start AP...");
-    startAP(ap_ssid, ap_password);
+    oledLog("No WiFi, AP started...");
+    //Мигаем светодиодом если не подключились
     led.blinkForever(3000, 100);
     delay(100);
-  } else {
+  });
+
+  WiFiConnector.onConnect([]() {
     Serial.println("\nПодключение к Wi-Fi успешно!");
     oledLog("Connected to WiFi");
     Serial.println(WiFi.localIP());
     oledLog(WiFi.localIP().toString());
     delay(100);
+    //Мигание светодиодом если подключились
     led.blinkForever(5000, 100);
 
     // Синхронизация времени с NTP
@@ -137,7 +138,8 @@ void setup() {
     // Проверка обновлений
     checkForUpdates();
     delay(500);
-  }
+  //}
+  });
 
   // Инициализация веб-сервера
   initWebServer();
@@ -205,6 +207,8 @@ void loop() {
 
   // Обрабатываем светодиод
   led.tick();
+
+  WiFiConnector.tick();
 }
 
 void viewData() {

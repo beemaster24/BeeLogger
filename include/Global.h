@@ -15,6 +15,7 @@
 #include <ESP8266HTTPClient.h> // Для HTTP-запросов
 #include <ESP8266httpUpdate.h> // Для OTA-обновлений
 #include <EncButton.h> // Юзаем кнопку от Gyver
+#include <WiFiConnector.h>
 
 // Настройки по умолчанию
 extern const char* _default_ssid;       // SSID Wi-Fi по умолчанию
