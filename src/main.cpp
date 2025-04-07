@@ -33,7 +33,6 @@ unsigned long lastMeasurementTime = 0;
 // Время последнего нажатия кнопки
 unsigned long lastButtonPress = 0;
 
-void startAP(const String& ap_ssid, const String& ap_password);
 int getTimezoneOffset();
 void viewData();
 void oledLog(String newString);
@@ -41,6 +40,8 @@ void oledLog(String newString);
 void setup() {
   Serial.begin(115200);
   delay(10);
+
+  WiFi.persistent(false);
 
   // Инициализация I2C
   Wire.begin();
@@ -97,6 +98,8 @@ void setup() {
     delay(100);
   }
 
+  WiFiConnector.setTimeout(10);
+
   WiFiConnector.setName(ap_ssid);
   WiFiConnector.setPass(ap_password);
 
@@ -105,20 +108,11 @@ void setup() {
   oledLog("Connecting to WiFi");
 
   // Ожидание подключения
-  unsigned long startTime = millis();
-  while (WiFiConnector.connected() != true && millis() - startTime < 10000) {
-    delay(500);
-    Serial.print(".");
-  }
-
-  // Если подключение не удалось, запускаем точку доступа
-  WiFiConnector.onError([]() {
-    Serial.println("\nНе удалось подключиться к Wi-Fi. Запуск точки доступа...");
-    oledLog("No WiFi, AP started...");
-    //Мигаем светодиодом если не подключились
-    led.blinkForever(3000, 100);
-    delay(100);
-  });
+  //unsigned long startTime = millis();
+  //while (WiFiConnector.connected() != true || millis() - startTime < 10000) {
+  //  delay(500);
+  //  Serial.print(".");
+  //}
 
   WiFiConnector.onConnect([]() {
     Serial.println("\nПодключение к Wi-Fi успешно!");
@@ -127,7 +121,7 @@ void setup() {
     oledLog(WiFi.localIP().toString());
     delay(100);
     //Мигание светодиодом если подключились
-    led.blinkForever(5000, 100);
+    led.blinkForever(2000, 100);
 
     // Синхронизация времени с NTP
     timeClient.begin();
@@ -141,8 +135,20 @@ void setup() {
   //}
   });
 
+  // Если подключение не удалось, запускаем точку доступа
+  WiFiConnector.onError([]() {
+    Serial.println("\nНе удалось подключиться к Wi-Fi. Запуск точки доступа...");
+    oledLog("AP started...");
+    //Мигаем светодиодом если не подключились
+    led.blinkForever(1000, 100);
+    delay(100);
+  });
+
   // Инициализация веб-сервера
-  initWebServer();
+  //initWebServer();
+  ui.attachBuild(build);
+  ui.attach(action);
+  ui.start();
 
   currentMillis = millis();
   oledPrevMillis = currentMillis;
@@ -170,19 +176,6 @@ void loop() {
     enOLED = false;
   }
 
-  // Периодическая проверка доступности Wi-Fi сети
-  if (currentMillis - previousMillis >= interval) {
-    previousMillis = currentMillis;
-
-    if (WiFi.status() != WL_CONNECTED) {
-      Serial.println("Wi-Fi сеть недоступна. Запуск точки доступа...");
-      startAP(default_ap_ssid, default_ap_password);
-      led.blinkForever(3000, 100);
-    } else {
-      Serial.println("Wi-Fi сеть доступна.");
-    }
-  }
-
   // Измерение веса, температуры и давления раз в час
   if (currentMillis - lastMeasurementTime >= interval) {
     lastMeasurementTime = currentMillis;
@@ -199,9 +192,6 @@ void loop() {
     Serial.println("Измерение сохранено: " + String(weight) + " кг, " + String(temperature) + " °C, " + String(pressure) + " гПа");
   }
 
-  // Выключение экрана через 10 секунд
-  //oled.setPower(false);
-
   // Обслуживание веб-сервера
   server.handleClient();
 
@@ -209,6 +199,8 @@ void loop() {
   led.tick();
 
   WiFiConnector.tick();
+
+  ui.tick();
 }
 
 void viewData() {
@@ -237,15 +229,6 @@ void viewData() {
   oled.print("C");
   currentMillis = millis();
   oledPrevMillis = currentMillis;
-}
-
-void startAP(const String& ap_ssid, const String& ap_password) {
-  // Запуск точки доступа
-  WiFi.softAP(ap_ssid.c_str(), ap_password.c_str());
-  Serial.println("Точка доступа запущена");
-  Serial.print("IP адрес: ");
-  Serial.println(WiFi.softAPIP());
-  oledLog(WiFi.softAPIP().toString());
 }
 
 int getTimezoneOffset() {

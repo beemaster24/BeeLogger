@@ -16,6 +16,7 @@
 #include <ESP8266httpUpdate.h> // Для OTA-обновлений
 #include <EncButton.h> // Юзаем кнопку от Gyver
 #include <WiFiConnector.h>
+#include <GyverPortal.h> //Web интерфейс
 
 // Настройки по умолчанию
 extern const char* _default_ssid;       // SSID Wi-Fi по умолчанию
@@ -52,6 +53,14 @@ extern const char* firmwareVersionUrl;
 
 // Текущая версия прошивки
 extern String currentFirmwareVersion;
+
+//Переменные для текущих температуры и давления
+extern float gTemp;
+extern float gPres;
+extern String uiSSID;
+extern String uiPass;
+
+extern GyverPortal ui;
 
 extern float weight;
 extern float load; // Вес устанавливаемый на весы для колибровки > 0

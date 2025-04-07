@@ -3,6 +3,50 @@
 #include "fram.h"
 #include "config.h"
 
+void build() {
+  GP.BUILD_BEGIN();
+  GP.THEME(GP_DARK);
+  GP.UPDATE("uiTemp, uiPres, uiSSID, uiPass");
+  GP.TITLE("Bee Logger");
+  GP.HR();
+
+  GP.NAV_TABS_LINKS("/, /settings", "Главная, Настройки");
+
+  if (ui.uri("/settings")) {
+    GP.PAGE_TITLE("Настройки");
+  } else {
+    GP.PAGE_TITLE("Текущее состояние");
+    GP.LABEL("Вес: ");
+    GP.HR();
+
+    GP.TABLE_BEGIN();
+
+    GP.TR();
+    GP.TD();
+    GP.LABEL("Температура");
+    GP.TD();
+    GP.LABEL_BLOCK("Температура ", "uiTemp");
+
+    GP.TR();
+    GP.TD();
+    GP.LABEL("Давление");
+    GP.TD();
+    GP.LABEL_BLOCK("Давление ", "uiPres");
+
+    GP.TABLE_END();
+  }
+  GP.BUILD_END();
+}
+
+void action() {
+  if (ui.update()) {
+    ui.updateFloat("uiTemp", gTemp);
+    ui.updateFloat("uiPres", gPres);
+    ui.updateString("uiSSID", wifi_ssid);
+    ui.updateString("uiPass", wifi_password);
+  }
+}
+
 String getMenu() {
     String menu = "<div style='margin-bottom: 20px;'>";
     menu += "<a href='/'>Главная</a> | ";

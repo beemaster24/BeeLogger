@@ -18,6 +18,14 @@ const int LOADCELL_DOUT_PIN = D5;
 const int LOADCELL_SCK_PIN = D6;
 HX711 scale;
 
+//Переменные для Web интерфейса
+float gTemp;
+float gPres;
+String uiSSID;
+String uiPass;
+
+GyverPortal ui;
+
 //Переменные для WiFi
 String wifi_ssid;
 String wifi_password;
